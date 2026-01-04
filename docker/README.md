@@ -287,6 +287,102 @@ rm -rf mysql/data/*
 docker-compose up -d
 ```
 
+## 本地开发模式
+
+本地开发时，只需要用 Docker 启动中间件（MySQL、Redis、RabbitMQ），微服务在 IDEA 中运行，方便调试。
+
+### 1. 启动中间件
+
+```bash
+cd docker
+docker-compose up -d mysql redis rabbitmq
+```
+
+### 2. 初始化数据库
+
+首次启动需要手动导入 SQL（因为只启动了 MySQL，没有走完整初始化流程）：
+
+**Windows (PowerShell):**
+```powershell
+docker exec -i datax-mysql mysql -uroot -p"1234@abcd" < mysql/init/00-init-databases.sql
+docker exec -i datax-mysql mysql -uroot -p"1234@abcd" < mysql/init/01-data_cloud.sql
+docker exec -i datax-mysql mysql -uroot -p"1234@abcd" < mysql/init/02-quartz.sql
+docker exec -i datax-mysql mysql -uroot -p"1234@abcd" < mysql/init/03-foodmart2.sql
+docker exec -i datax-mysql mysql -uroot -p"1234@abcd" < mysql/init/04-robot.sql
+```
+
+**macOS/Linux:**
+```bash
+docker exec -i datax-mysql mysql -uroot -p'1234@abcd' < mysql/init/00-init-databases.sql
+docker exec -i datax-mysql mysql -uroot -p'1234@abcd' < mysql/init/01-data_cloud.sql
+docker exec -i datax-mysql mysql -uroot -p'1234@abcd' < mysql/init/02-quartz.sql
+docker exec -i datax-mysql mysql -uroot -p'1234@abcd' < mysql/init/03-foodmart2.sql
+docker exec -i datax-mysql mysql -uroot -p'1234@abcd' < mysql/init/04-robot.sql
+```
+
+### 3. IDEA 配置启动参数
+
+项目已提供 `local` 环境配置（中间件地址为 localhost），启动时指定 profile 即可。
+
+**方式一：VM options**
+
+在 IDEA 的 `Run/Debug Configurations` 中，添加 VM options：
+```
+-Dspring.profiles.active=local
+```
+
+**方式二：Program arguments**
+```
+--spring.profiles.active=local
+```
+
+**方式三：环境变量**
+```
+SPRING_PROFILES_ACTIVE=local
+```
+
+> 提示：`local` 配置文件位于 `datax-config/src/main/resources/config/*-local.yml`
+
+### 4. IDEA 启动服务
+
+按以下顺序启动服务（右键 Application 类 → Run）：
+
+1. `DataxEurekaApplication` (datax-eureka) - 注册中心
+2. `DataxConfigApplication` (datax-config) - 配置中心（需设置 local profile）
+3. `DataxGatewayApplication` (datax-gateway) - 网关（需设置 local profile）
+4. `DataxAuthApplication` (datax-auth) - 认证服务（需设置 local profile）
+5. `DataxSystemApplication` (datax-modules/system-service) - 系统服务（需设置 local profile）
+6. 其他业务服务按需启动...
+
+> 注意：除 Eureka 外，其他服务都需要设置 `-Dspring.profiles.active=local`
+
+### 5. 启动前端
+
+```bash
+cd datax-ui
+npm install
+npm run dev
+```
+
+### 6. 访问地址
+
+- 前端: http://localhost:9527
+- Eureka: http://localhost:8610
+- Gateway: http://localhost:8612
+
+### 本地开发 vs Docker 部署对比
+
+| 项目 | 本地开发 | Docker 部署 |
+|------|----------|-------------|
+| Profile | local | dev（默认） |
+| 中间件 | Docker 容器 | Docker 容器 |
+| 微服务 | IDEA 运行 | Docker 容器 |
+| 前端 | npm run dev | Nginx 容器 |
+| 配置文件 | *-local.yml | *-dev.yml |
+| 中间件地址 | localhost | 容器名 |
+| 调试 | 支持断点 | 查看日志 |
+| 适用场景 | 开发调试 | 测试/生产 |
+
 ## 目录结构
 
 ```
