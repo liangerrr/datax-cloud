@@ -1,0 +1,14 @@
+数据库名：data_cloud、data_cloud_flowable、data_cloud_quartz、foodmart2、robot
+字符集：utf8mb4
+排序规则：utf8mb4_general_ci
+
+data_cloud导入data_cloud.sql
+data_cloud_quartz导入tables_mysql_innodb.sql
+foodmart2导入foodmart2.sql
+robot导入robot.sql
+data_cloud_flowable工作流会自动生成表
+
+新建
+/usr/local/datax-cloud
+/usr/local/datax-cloud/logs
+2个目录，jar包和前端dist放在/usr/local/datax-cloud目录下

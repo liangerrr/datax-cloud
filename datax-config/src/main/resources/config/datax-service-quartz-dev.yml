@@ -2,7 +2,7 @@
 spring:
   redis:
     database: 1
-    host: 192.168.248.130
+    host: datax-redis
     port: 6379
     password: 1234@abcd   # 密码（默认为空）
     timeout: 6000ms       # 连接超时时长（毫秒）
@@ -17,12 +17,12 @@ spring:
       driver-class-name: com.mysql.cj.jdbc.Driver
       username: root
       password: 1234@abcd
-      url: jdbc:mysql://192.168.248.130:3306/data_cloud?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+      url: jdbc:mysql://datax-mysql:3306/data_cloud?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
     quartz:
       driver-class-name: com.mysql.cj.jdbc.Driver
       username: root
       password: 1234@abcd
-      url: jdbc:mysql://192.168.248.130:3306/data_cloud_quartz?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+      url: jdbc:mysql://datax-mysql:3306/data_cloud_quartz?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
   quartz:
     job-store-type: jdbc
     jdbc:
@@ -66,14 +66,14 @@ mybatis-plus:
 security:
   oauth2:
     client:
-      access-token-uri: http://localhost:8612/auth/oauth/token
-      user-authorization-uri: http://localhost:8612/auth/oauth/authorize
+      access-token-uri: http://datax-gateway:8612/auth/oauth/token
+      user-authorization-uri: http://datax-gateway:8612/auth/oauth/authorize
       client-id: datax
       client-secret: 123456
       scope: all
     resource:
       loadBalanced: true
-      token-info-uri: http://localhost:8612/auth/oauth/check_token
+      token-info-uri: http://datax-gateway:8612/auth/oauth/check_token
 
 # Swagger界面内容配置
 swagger:

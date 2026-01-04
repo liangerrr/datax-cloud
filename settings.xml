@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+
+  <localRepository>${user.home}/.m2/repository</localRepository>
+
+  <mirrors>
+    <!-- 阿里云镜像加速，排除特殊仓库 -->
+    <mirror>
+      <id>aliyunmaven</id>
+      <mirrorOf>central</mirrorOf>
+      <name>阿里云公共仓库</name>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </mirror>
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>datax-repos</id>
+      <repositories>
+        <!-- Aspose 官方仓库 -->
+        <repository>
+          <id>AsposeJavaAPI</id>
+          <name>Aspose Java API</name>
+          <url>https://releases.aspose.com/java/repo/</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </repository>
+        <!-- JasperReports 仓库 -->
+        <repository>
+          <id>jaspersoft</id>
+          <name>JasperSoft Repository</name>
+          <url>https://jaspersoft.jfrog.io/jaspersoft/third-party-ce-artifacts/</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </repository>
+        <repository>
+          <id>jr-ce-releases</id>
+          <name>JasperReports CE Releases</name>
+          <url>https://jaspersoft.jfrog.io/jaspersoft/jr-ce-releases/</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </repository>
+        <!-- Maven 中央仓库备用 -->
+        <repository>
+          <id>central</id>
+          <name>Maven Central</name>
+          <url>https://repo.maven.apache.org/maven2</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>datax-repos</activeProfile>
+  </activeProfiles>
+
+</settings>

@@ -1,0 +1,112 @@
+centos7系统环境安装
+
+jdk1.8
+cd /usr/local
+
+# 上传jdk文件到/usr/local目录下
+# 解压缩
+tar -zxvf jdk-8u261-linux-x64.tar.gz
+
+# 配置环境变量
+vim /etc/profile
+
+export JAVA_HOME=/usr/local/jdk1.8.0_261
+export CLASSPATH=$JAVA_HOME/lib:$JAVA_HOME/lib
+export PATH=$JAVA_HOME/bin:$PATH
+
+# 使用source命令使修改立刻生效
+source /etc/profile
+
+# 通过命令测试
+java -version
+
+
+mysql8.x
+cd /usr/local
+
+wget http://dev.mysql.com/get/mysql80-community-release-el7-3.noarch.rpm
+
+yum -y install mysql80-community-release-el7-3.noarch.rpm
+
+# 安装Mysql服务器
+yum -y install mysql-community-server
+
+# 启动Mysql服务
+systemctl start mysqld.service
+
+# 检查mysql的运行状态
+systemctl status mysqld.service
+
+# 获取MySQL的临时密码
+grep 'temporary password' /var/log/mysqld.log
+
+# 登录
+mysql -uroot -p
+
+# 查看当前密码验证策略
+SHOW VARIABLES LIKE 'validate_password.%';
+
+# 修改全局参数
+# validate_password.length 是密码的最小长度，默认是8，我们把它改成6
+set global validate_password.length=6;
+# validate_password.policy 验证密码的复杂程度，我们把它改成0
+set global validate_password.policy=0;
+# validate_password.check_user_name 用户名检查，用户名和密码不能相同，我们也把它关掉
+set global validate_password.check_user_name=off;
+
+# 修改密码
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '1234@abcd';
+
+use mysql;
+# 查看host，正常情况，host=localhost
+select host,user from user where user='root';
+# 更改host为所有ip
+update user set host='%' where user='root';
+# 查看更改，此时 host=%
+select host,user from user where user='root';
+
+# 授权其他机器登陆
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+FLUSH  PRIVILEGES;
+
+
+rabbitmq3.8.x
+cd /usr/local
+
+# erlang安装
+# 网址https://packagecloud.io/rabbitmq/erlang/
+# 下载
+wget --content-disposition https://packagecloud.io/rabbitmq/erlang/packages/el/7/erlang-23.1.4-1.el7.x86_64.rpm/download.rpm
+
+# 通过yum安装本地的rpm包
+yum localinstall erlang-23.1.4-1.el7.x86_64.rpm
+
+# 查看版本
+erl -version
+
+# rabbitmq安装
+# 网址https://github.com/rabbitmq/rabbitmq-server/releases
+
+# 下载完成后导入KEY
+rpm --import https://www.rabbitmq.com/rabbitmq-release-signing-key.asc
+
+# 通过yum安装本地的rpm包
+yum localinstall rabbitmq-server-3.8.9-1.el7.noarch.rpm
+
+# 启动rabbitmq服务器
+systemctl start rabbitmq-server
+
+# 设置开机启动
+systemctl enable rabbitmq-server
+
+# 安装 Web 管理界面的插件
+rabbitmq-plugins enable rabbitmq_management
+
+# 创建了一个用户admin密码admin123的用户
+rabbitmqctl add_user admin 1234@abcd
+# 用户进行赋权
+rabbitmqctl set_user_tags admin administrator
+rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
+
+# 通过浏览器进行登录
+http://Your_Server_IP:15672/

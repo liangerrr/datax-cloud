@@ -2,7 +2,7 @@
 spring:
   redis:
     database: 1
-    host: 192.168.248.130
+    host: datax-redis
     port: 6379
     password: 1234@abcd   # 密码（默认为空）
     timeout: 6000ms       # 连接超时时长（毫秒）
@@ -18,6 +18,6 @@ spring:
       datasource:
         mysql:
           driver-class-name: com.mysql.cj.jdbc.Driver
-          url: jdbc:mysql://192.168.248.130:3306/data_cloud?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+          url: jdbc:mysql://datax-mysql:3306/data_cloud?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
           username: root
           password: 1234@abcd

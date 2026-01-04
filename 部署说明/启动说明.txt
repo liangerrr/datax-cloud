@@ -1,0 +1,23 @@
+nohup java -jar /usr/local/datax-cloud/datax-eureka.jar >/usr/local/datax-cloud/logs/datax-eureka-20210105 2>&1 &
+nohup java -jar /usr/local/datax-cloud/datax-config.jar >/usr/local/datax-cloud/logs/datax-config-20210105 2>&1 &
+nohup java -jar /usr/local/datax-cloud/datax-gateway.jar >/usr/local/datax-cloud/logs/datax-gateway-20210105 2>&1 &
+nohup java -jar /usr/local/datax-cloud/datax-auth.jar >/usr/local/datax-cloud/logs/datax-auth-20210105 2>&1 &
+
+nohup java -jar /usr/local/datax-cloud/system-service.jar >/usr/local/datax-cloud/logs/system-service-20210105 2>&1 &
+nohup java -jar /usr/local/datax-cloud/quartz-service.jar >/usr/local/datax-cloud/logs/quartz-service-20210105 2>&1 &
+nohup java -jar /usr/local/datax-cloud/workflow-service.jar >/usr/local/datax-cloud/logs/workflow-service-20210105 2>&1 &
+
+nohup java -jar /usr/local/datax-cloud/data-metadata-service.jar >/usr/local/datax-cloud/logs/data-metadata-service-20210105 2>&1 &
+nohup java -jar /usr/local/datax-cloud/data-metadata-service-console.jar >/usr/local/datax-cloud/logs/data-metadata-service-console-20210105 2>&1 &
+
+nohup java -jar /usr/local/datax-cloud/data-standard-service.jar >/usr/local/datax-cloud/logs/data-standard-service-20210105 2>&1 &
+
+nohup java -jar /usr/local/datax-cloud/data-quality-service.jar >/usr/local/datax-cloud/logs/data-quality-service-20210105 2>&1 &
+
+nohup java -jar /usr/local/datax-cloud/data-market-service.jar >/usr/local/datax-cloud/logs/data-market-service-20210105 2>&1 &
+nohup java -jar /usr/local/datax-cloud/data-market-service-mapping.jar >/usr/local/datax-cloud/logs/data-market-service-mapping-20210105 2>&1 &
+nohup java -jar /usr/local/datax-cloud/data-market-service-integration.jar >/usr/local/datax-cloud/logs/data-market-service-integration-20210105 2>&1 &
+
+nohup java -jar /usr/local/datax-cloud/data-masterdata-service.jar >/usr/local/datax-cloud/logs/data-masterdata-service-20210105 2>&1 &
+
+nohup java -jar /usr/local/datax-cloud/data-visual-service.jar >/usr/local/datax-cloud/logs/data-visual-service-20210105 2>&1 &

@@ -1,0 +1,180 @@
+version: '3.8'
+
+# 精简版 - 仅包含核心服务
+# 使用方法: docker-compose -f docker-compose-lite.yml up -d
+
+networks:
+  datax-net:
+    driver: bridge
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: datax-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234@abcd
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+      - ./mysql/conf/my.cnf:/etc/mysql/conf.d/my.cnf
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234@abcd"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Redis 缓存
+  redis:
+    image: redis:6.2
+    container_name: datax-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass 1234@abcd --appendonly yes
+    volumes:
+      - ./redis/data:/data
+    networks:
+      - datax-net
+
+  # Eureka 注册中心
+  datax-eureka:
+    build:
+      context: .
+      dockerfile: Dockerfile-eureka
+    container_name: datax-eureka
+    restart: always
+    ports:
+      - "8610:8610"
+    environment:
+      - EUREKA_IP=datax-eureka
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8610/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Config 配置中心
+  datax-config:
+    build:
+      context: .
+      dockerfile: Dockerfile-config
+    container_name: datax-config
+    restart: always
+    ports:
+      - "8611:8611"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+    depends_on:
+      datax-eureka:
+        condition: service_healthy
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8611/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Gateway 网关
+  datax-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile-gateway
+    container_name: datax-gateway
+    restart: always
+    ports:
+      - "8612:8612"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+    depends_on:
+      datax-config:
+        condition: service_healthy
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8612/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Auth 认证服务
+  datax-auth:
+    build:
+      context: .
+      dockerfile: Dockerfile-auth
+    container_name: datax-auth
+    restart: always
+    ports:
+      - "8613:8613"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+    depends_on:
+      datax-gateway:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    networks:
+      - datax-net
+
+  # System 系统服务
+  datax-system:
+    build:
+      context: .
+      dockerfile: Dockerfile-service
+      args:
+        SERVICE_NAME: system-service
+        SERVICE_PORT: 8810
+    container_name: datax-system
+    restart: always
+    ports:
+      - "8810:8810"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+    depends_on:
+      - datax-auth
+    networks:
+      - datax-net
+
+  # Metadata 元数据服务
+  datax-metadata:
+    build:
+      context: .
+      dockerfile: Dockerfile-service
+      args:
+        SERVICE_NAME: data-metadata-service
+        SERVICE_PORT: 8820
+    container_name: datax-metadata
+    restart: always
+    ports:
+      - "8820:8820"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+    depends_on:
+      - datax-auth
+    networks:
+      - datax-net
+
+  # 前端 UI
+  datax-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile-ui
+    container_name: datax-ui
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      datax-gateway:
+        condition: service_healthy
+    networks:
+      - datax-net

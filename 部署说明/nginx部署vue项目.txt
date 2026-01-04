@@ -1,0 +1,12 @@
+listen       8088;
+
+underscores_in_headers on;
+
+location /prod-api/{
+	proxy_pass  http://localhost:8612/;
+}
+
+location / {
+	root   /usr/local/datax-cloud/dist;
+	index  index.html index.htm;
+}

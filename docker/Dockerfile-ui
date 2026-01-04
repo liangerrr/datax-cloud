@@ -1,0 +1,30 @@
+FROM node:14-alpine AS builder
+
+# 安装 Python 和编译工具 (deasync 需要)
+RUN apk add --no-cache python3 make g++
+
+WORKDIR /app
+
+COPY datax-ui/package*.json ./
+
+RUN npm install --registry=https://registry.npmmirror.com
+
+COPY datax-ui/ .
+
+RUN npm run build
+
+# 生产镜像
+FROM nginx:alpine
+
+LABEL maintainer="datax-cloud"
+
+# 复制构建产物
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 复制nginx配置
+COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

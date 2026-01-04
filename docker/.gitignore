@@ -1,0 +1,11 @@
+# JAR 文件
+jars/
+
+# 数据目录
+mysql/data/
+redis/data/
+rabbitmq/data/
+
+# 日志
+logs/
+*.log

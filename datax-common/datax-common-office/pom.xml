@@ -13,9 +13,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.aspose</groupId>
+            <groupId>com.luhuiguo</groupId>
             <artifactId>aspose-words</artifactId>
-            <version>${aspose.version}</version>
+            <version>23.1</version>
         </dependency>
     </dependencies>
 </project>
