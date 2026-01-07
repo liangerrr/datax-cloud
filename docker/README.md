@@ -383,6 +383,179 @@ npm run dev
 | 调试 | 支持断点 | 查看日志 |
 | 适用场景 | 开发调试 | 测试/生产 |
 
+## 按模块开发（最小启动）
+
+如果只开发某个模块，不需要启动全部服务。以下是各模块的最小启动清单。
+
+### 通用基础服务（必须启动）
+
+无论开发哪个模块，以下服务都需要启动：
+
+**Docker 中间件：**
+```bash
+cd docker
+docker-compose up -d mysql redis rabbitmq
+```
+
+**IDEA 启动顺序（都需要 `-Dspring.profiles.active=local`，Eureka 除外）：**
+
+| 顺序 | 服务 | 端口 | 说明 |
+|------|------|------|------|
+| 1 | datax-eureka | 8610 | 注册中心（无需 local profile） |
+| 2 | datax-config | 8611 | 配置中心 |
+| 3 | datax-gateway | 8612 | 网关 |
+| 4 | datax-auth | 8613 | 认证服务 |
+| 5 | datax-system | 8810 | 系统服务 |
+
+### 数据应用模块开发
+
+开发数据分析、数据共享、数据服务相关功能时，额外启动：
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| datax-metadata | 8820 | 元数据服务（共享目录数据来源） |
+| datax-market | 8822 | 数据集市（API服务核心） |
+
+**内存占用预估：**
+- Docker 中间件：~900MB
+- 7 个微服务：~2.1GB
+- 前端 dev server：~200MB
+- **总计：~3.2GB**
+
+### 数据质量模块开发
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| datax-metadata | 8820 | 元数据服务 |
+| datax-quality | 8826 | 数据质量服务 |
+
+### 数据标准模块开发
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| datax-metadata | 8820 | 元数据服务 |
+| datax-standard | 8825 | 数据标准服务 |
+
+### 可视化模块开发
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| datax-metadata | 8820 | 元数据服务（数据源） |
+| datax-visual | 8827 | 可视化服务 |
+
+### 工作流模块开发
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| datax-workflow | 8814 | 工作流服务 |
+
+### 定时任务模块开发
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| datax-quartz | 8813 | 定时任务服务 |
+
+### 服务依赖关系图
+
+```
+                    ┌─────────────┐
+                    │   前端 UI   │
+                    └──────┬──────┘
+                           │
+                    ┌──────▼──────┐
+                    │   Gateway   │
+                    └──────┬──────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+        ▼                  ▼                  ▼
+   ┌─────────┐       ┌─────────┐       ┌─────────┐
+   │  Auth   │       │ System  │       │ 业务服务 │
+   └─────────┘       └─────────┘       └────┬────┘
+                                            │
+              ┌─────────────┬───────────────┼───────────────┬─────────────┐
+              │             │               │               │             │
+              ▼             ▼               ▼               ▼             ▼
+         ┌────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+         │Metadata│   │  Market  │   │ Quality  │   │ Standard │   │  Visual  │
+         └────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘
+              │             │
+              │             ├── market-mapping
+              │             └── market-integration
+              │
+              └── metadata-console (SQL工作台)
+```
+
+## 数据库版本管理
+
+项目使用 Flyway 进行数据库版本管理，确保团队成员的数据库结构保持一致。
+
+### 工作原理
+
+```
+服务启动时自动执行：
+1. 检查 flyway_schema_history 表（记录已执行的脚本）
+2. 扫描 db/migration 目录下的 SQL 文件
+3. 按版本号顺序执行未执行过的脚本
+4. 记录执行结果
+```
+
+### 查看数据库版本
+
+**方式一：API 接口**
+
+```bash
+# 获取当前版本
+curl http://localhost:8810/db/version/current
+
+# 获取迁移历史
+curl http://localhost:8810/db/version/history
+
+# 获取待执行的迁移
+curl http://localhost:8810/db/version/pending
+```
+
+**方式二：直接查询数据库**
+
+```sql
+SELECT version, description, installed_on, success 
+FROM flyway_schema_history 
+ORDER BY installed_rank;
+```
+
+### 添加新的数据库变更
+
+1. 在对应服务的 `src/main/resources/db/migration/` 目录下创建 SQL 文件
+2. 命名规范：`V{版本号}__{描述}.sql`
+3. 启动服务，Flyway 自动执行
+
+**命名示例：**
+```
+V1.0.0__baseline.sql              # 基线版本
+V1.1.0__add_share_tables.sql      # 新增共享相关表
+V1.1.1__add_share_status.sql      # 添加状态字段
+V1.2.0__create_report_table.sql   # 新增报告表
+```
+
+**注意事项：**
+- 版本号必须递增，不能重复
+- 已执行的脚本不要修改
+- 脚本要保证可重复执行（使用 IF NOT EXISTS）
+- 提交代码前先在本地测试
+
+### 迁移脚本目录
+
+```
+datax-modules/
+├── system-service-parent/system-service/src/main/resources/db/migration/
+│   ├── V1.0.0__baseline.sql
+│   └── V1.1.0__add_data_application_tables.sql
+├── data-market-service-parent/data-market-service/src/main/resources/db/migration/
+│   └── V1.0.0__baseline.sql
+└── data-metadata-service-parent/data-metadata-service/src/main/resources/db/migration/
+    └── V1.0.0__baseline.sql
+```
+
 ## 目录结构
 
 ```
