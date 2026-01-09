@@ -16,6 +16,10 @@ docker/mysql/data/
 docker/redis/data/
 docker/rabbitmq/data/
 
+# JAR 文件
+*.jar
+docker/jars/*.jar
+
 # 系统文件
 .DS_Store
 Thumbs.db

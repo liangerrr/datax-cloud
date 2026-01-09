@@ -1,5 +1,5 @@
-# JAR 文件
-jars/
+# JAR 文件现在允许提交，以支持纯Docker部署
+# jars/
 
 # 数据目录
 mysql/data/
