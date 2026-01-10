@@ -1,0 +1,395 @@
+networks:
+  datax-net:
+    driver: bridge
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: datax-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234@abcd
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+      - ./mysql/conf/my.cnf:/etc/mysql/conf.d/my.cnf
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p1234@abcd"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Redis 缓存
+  redis:
+    image: redis:6.2
+    container_name: datax-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass 1234@abcd --appendonly yes
+    volumes:
+      - ./redis/data:/data
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "1234@abcd", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ 消息队列
+  rabbitmq:
+    image: rabbitmq:3.8-management
+    container_name: datax-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: 1234@abcd
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./rabbitmq/data:/var/lib/rabbitmq
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Eureka 注册中心
+  datax-eureka:
+    image: fanleqie/datax-eureka:latest
+    container_name: datax-eureka
+    restart: always
+    ports:
+      - "8610:8610"
+    environment:
+      - EUREKA_IP=datax-eureka
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8610/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+
+  # Config 配置中心
+  datax-config:
+    image: fanleqie/datax-config:latest
+    container_name: datax-config
+    restart: always
+    ports:
+      - "8611:8611"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-config
+    depends_on:
+      datax-eureka:
+        condition: service_healthy
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8611/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Gateway 网关
+  datax-gateway:
+    image: fanleqie/datax-gateway:latest
+    container_name: datax-gateway
+    restart: always
+    ports:
+      - "8612:8612"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-gateway
+      - CONFIG_SERVER_URI=http://datax-config:8611
+    depends_on:
+      datax-config:
+        condition: service_healthy
+    networks:
+      - datax-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8612/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Auth 认证服务
+  datax-auth:
+    image: fanleqie/datax-auth:latest
+    container_name: datax-auth
+    restart: always
+    ports:
+      - "8613:8613"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-auth
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-gateway:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - datax-net
+
+  # System 系统服务
+  datax-system:
+    image: fanleqie/datax-system:latest
+    container_name: datax-system
+    restart: always
+    ports:
+      - "8810:8810"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-system
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-auth:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Quartz 定时任务服务
+  datax-quartz:
+    image: fanleqie/datax-quartz:latest
+    container_name: datax-quartz
+    restart: always
+    ports:
+      - "8813:8813"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-quartz
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-auth:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Workflow 工作流服务
+  datax-workflow:
+    image: fanleqie/datax-workflow:latest
+    container_name: datax-workflow
+    restart: always
+    ports:
+      - "8814:8814"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-workflow
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+      - RABBITMQ_HOST=datax-rabbitmq
+    depends_on:
+      datax-auth:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - datax-net
+
+
+  # Metadata 元数据服务
+  datax-metadata:
+    image: fanleqie/datax-metadata:latest
+    container_name: datax-metadata
+    restart: always
+    ports:
+      - "8820:8820"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-metadata
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-auth:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Metadata Console SQL工作台
+  datax-metadata-console:
+    image: fanleqie/datax-metadata-console:latest
+    container_name: datax-metadata-console
+    restart: always
+    ports:
+      - "8821:8821"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-metadata-console
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-metadata:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Market 数据集市服务
+  datax-market:
+    image: fanleqie/datax-market:latest
+    container_name: datax-market
+    restart: always
+    ports:
+      - "8822:8822"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-market
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-auth:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Market Mapping API映射服务
+  datax-market-mapping:
+    image: fanleqie/datax-market-mapping:latest
+    container_name: datax-market-mapping
+    restart: always
+    ports:
+      - "8823:8823"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-market-mapping
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-market:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Market Integration 服务集成
+  datax-market-integration:
+    image: fanleqie/datax-market-integration:latest
+    container_name: datax-market-integration
+    restart: always
+    ports:
+      - "8824:8824"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-market-integration
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-market:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Standard 数据标准服务
+  datax-standard:
+    image: fanleqie/datax-standard:latest
+    container_name: datax-standard
+    restart: always
+    ports:
+      - "8825:8825"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-standard
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-auth:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Quality 数据质量服务
+  datax-quality:
+    image: fanleqie/datax-quality:latest
+    container_name: datax-quality
+    restart: always
+    ports:
+      - "8826:8826"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-quality
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-auth:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Visual 可视化服务
+  datax-visual:
+    image: fanleqie/datax-visual:latest
+    container_name: datax-visual
+    restart: always
+    ports:
+      - "8827:8827"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-visual
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-auth:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # Masterdata 主数据服务
+  datax-masterdata:
+    image: fanleqie/datax-masterdata:latest
+    container_name: datax-masterdata
+    restart: always
+    ports:
+      - "8828:8828"
+    environment:
+      - EUREKA_SERVER=http://datax-eureka:8610/eureka
+      - EUREKA_IP=datax-masterdata
+      - CONFIG_SERVER_URI=http://datax-config:8611
+      - MYSQL_HOST=datax-mysql
+      - REDIS_HOST=datax-redis
+    depends_on:
+      datax-auth:
+        condition: service_started
+    networks:
+      - datax-net
+
+  # 前端 UI
+  datax-ui:
+    image: fanleqie/datax-ui:latest
+    container_name: datax-ui
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      datax-gateway:
+        condition: service_healthy
+    networks:
+      - datax-net
