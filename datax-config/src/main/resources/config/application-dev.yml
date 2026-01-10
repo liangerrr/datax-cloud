@@ -5,13 +5,9 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
-  # Flyway 数据库版本管理
+  # Flyway 数据库版本管理（默认禁用，只在 system-service 启用）
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 0
-    validate-on-migrate: false
+    enabled: false
   # zipkin
 #  zipkin:
 #    enabled: true
